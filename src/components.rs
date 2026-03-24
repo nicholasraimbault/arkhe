@@ -195,7 +195,9 @@ impl Default for RestartState {
 
 /// Runtime cgroup handle — OwnedFd for RAII cleanup.
 pub struct CgroupHandle {
+    #[allow(dead_code)]
     pub cgroup_fd: OwnedFd,
     pub psi_memory_fd: Option<OwnedFd>,
+    #[allow(dead_code)]
     pub psi_cpu_fd: Option<OwnedFd>,
 }

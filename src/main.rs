@@ -261,32 +261,29 @@ fn handle_signals(
     ring: &mut IoUring,
     shutting_down: &mut bool,
 ) -> Result<(), SupervisorError> {
-    loop {
-        match sys::read_signal(signal_fd)? {
-            Some(info) => match info.signo {
-                libc::SIGCHLD => {
-                    log!("signal: SIGCHLD from pid {}", info.pid);
+    while let Some(info) = sys::read_signal(signal_fd)? {
+        match info.signo {
+            libc::SIGCHLD => {
+                log!("signal: SIGCHLD from pid {}", info.pid);
+            }
+            libc::SIGTERM => {
+                log!("signal: SIGTERM, shutting down");
+                *shutting_down = true;
+            }
+            libc::SIGHUP => {
+                log!("signal: SIGHUP — processing control files and hot-reloading services");
+                if let Err(e) = systems::supervise::process_control_files(world, ring) {
+                    log!("ctl: error processing control files: {e}");
                 }
-                libc::SIGTERM => {
-                    log!("signal: SIGTERM, shutting down");
-                    *shutting_down = true;
+                // Immediately re-scan /etc/sv/ so that `ark reload` takes effect
+                // without waiting for the next polling interval.
+                if let Err(e) = systems::deps::on_deps_poll(world, ring) {
+                    log!("reload: error during hot-reload scan: {e}");
                 }
-                libc::SIGHUP => {
-                    log!("signal: SIGHUP — processing control files and hot-reloading services");
-                    if let Err(e) = systems::supervise::process_control_files(world, ring) {
-                        log!("ctl: error processing control files: {e}");
-                    }
-                    // Immediately re-scan /etc/sv/ so that `ark reload` takes effect
-                    // without waiting for the next polling interval.
-                    if let Err(e) = systems::deps::on_deps_poll(world, ring) {
-                        log!("reload: error during hot-reload scan: {e}");
-                    }
-                }
-                _ => {
-                    log!("signal: unexpected signo {}", info.signo);
-                }
-            },
-            None => break,
+            }
+            _ => {
+                log!("signal: unexpected signo {}", info.signo);
+            }
         }
     }
     Ok(())
@@ -325,6 +322,7 @@ fn scan_services(world: &mut World) {
 }
 
 /// No-op signal handler for SIGALRM (used to interrupt io_uring submit_and_wait).
+#[allow(dead_code)]
 extern "C" fn noop_signal_handler(_: libc::c_int) {}
 
 /// Create a directory, ignoring "already exists" errors.

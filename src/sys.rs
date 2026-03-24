@@ -25,6 +25,7 @@ use crate::error::SupervisorError;
 pub struct SignalInfo {
     pub signo: i32,
     pub pid: u32,
+    #[allow(dead_code)]
     pub status: i32,
 }
 
@@ -219,10 +220,14 @@ pub fn clone3_exec(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // fanotify_init flags
+#[allow(dead_code)]
 const FAN_CLASS_NOTIF: libc::c_uint = 0x0000_0000;
+#[allow(dead_code)]
 const FAN_NONBLOCK: libc::c_uint = 0x0000_0002;
+#[allow(dead_code)]
 const FAN_REPORT_DFID_NAME: libc::c_uint = 0x0000_0C00;
 // fanotify_mark flags
+#[allow(dead_code)]
 const FAN_MARK_ADD: libc::c_uint = 0x0000_0001;
 // fanotify event masks
 pub const FAN_CREATE: u64 = 0x0000_0100;
@@ -239,6 +244,7 @@ pub struct FanotifyEvent {
 
 /// Set up fanotify watching /run/ready/ and /etc/sv/.
 /// FAN_CREATE | FAN_DELETE on ready dir, plus FAN_ONDIR on sv dir.
+#[allow(dead_code)]
 pub fn setup_fanotify() -> Result<OwnedFd, SupervisorError> {
     let fd = unsafe {
         libc::syscall(
@@ -373,15 +379,21 @@ pub const LL_FS_READ_FILE: u64 = 1 << 2;
 pub const LL_FS_READ_DIR: u64 = 1 << 3;
 pub const LL_FS_REMOVE_DIR: u64 = 1 << 4;
 pub const LL_FS_REMOVE_FILE: u64 = 1 << 5;
+#[allow(dead_code)]
 pub const LL_FS_MAKE_CHAR: u64 = 1 << 6;
 pub const LL_FS_MAKE_DIR: u64 = 1 << 7;
 pub const LL_FS_MAKE_REG: u64 = 1 << 8;
+#[allow(dead_code)]
 pub const LL_FS_MAKE_SOCK: u64 = 1 << 9;
+#[allow(dead_code)]
 pub const LL_FS_MAKE_FIFO: u64 = 1 << 10;
+#[allow(dead_code)]
 pub const LL_FS_MAKE_BLOCK: u64 = 1 << 11;
 pub const LL_FS_MAKE_SYM: u64 = 1 << 12;
+#[allow(dead_code)]
 pub const LL_FS_REFER: u64 = 1 << 13;
 pub const LL_FS_TRUNCATE: u64 = 1 << 14;
+#[allow(dead_code)]
 pub const LL_FS_IOCTL_DEV: u64 = 1 << 15;
 pub const LL_FS_ALL: u64 = (1 << 16) - 1;
 
@@ -961,6 +973,7 @@ pub fn bind_unix(path: &Path) -> io::Result<OwnedFd> {
 }
 
 /// Accept a connection on a listening socket (SOCK_CLOEXEC).
+#[allow(dead_code)]
 pub fn accept_fd(listen_fd: &OwnedFd) -> io::Result<OwnedFd> {
     let fd = unsafe {
         libc::accept4(
@@ -1071,15 +1084,23 @@ pub fn mount_tmpfs(path: &Path) -> io::Result<()> {
 // mount namespace setup. Wiring requires creating user namespaces with
 // specific UID/GID mappings — follow-up work.
 
+#[allow(dead_code)]
 const SYS_OPEN_TREE: libc::c_long = 428;
+#[allow(dead_code)]
 const SYS_MOVE_MOUNT: libc::c_long = 429;
+#[allow(dead_code)]
 const SYS_MOUNT_SETATTR: libc::c_long = 442;
 
+#[allow(dead_code)]
 const OPEN_TREE_CLONE: libc::c_uint = 1;
+#[allow(dead_code)]
 const AT_RECURSIVE: libc::c_uint = 0x8000;
+#[allow(dead_code)]
 const MOUNT_ATTR_IDMAP: u64 = 0x0010_0000;
+#[allow(dead_code)]
 const MOVE_MOUNT_F_EMPTY_PATH: libc::c_uint = 0x0000_0004;
 
+#[allow(dead_code)]
 #[repr(C)]
 struct MountAttr {
     attr_set: u64,
@@ -1089,6 +1110,7 @@ struct MountAttr {
 }
 
 /// Clone a mount subtree into an fd (new mount API).
+#[allow(dead_code)]
 pub fn open_tree(path: &Path) -> io::Result<OwnedFd> {
     let path_c = CString::new(path.as_os_str().as_encoded_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "null in path"))?;
@@ -1107,6 +1129,7 @@ pub fn open_tree(path: &Path) -> io::Result<OwnedFd> {
 }
 
 /// Apply an ID mapping to a cloned mount via a user namespace fd.
+#[allow(dead_code)]
 pub fn mount_setattr_idmap(mount_fd: &OwnedFd, userns_fd: &OwnedFd) -> io::Result<()> {
     let attr = MountAttr {
         attr_set: MOUNT_ATTR_IDMAP,
@@ -1131,6 +1154,7 @@ pub fn mount_setattr_idmap(mount_fd: &OwnedFd, userns_fd: &OwnedFd) -> io::Resul
 }
 
 /// Attach a cloned mount at a path (new mount API).
+#[allow(dead_code)]
 pub fn move_mount(from_fd: &OwnedFd, to_path: &Path) -> io::Result<()> {
     let to_c = CString::new(to_path.as_os_str().as_encoded_bytes())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "null in path"))?;

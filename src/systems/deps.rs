@@ -104,6 +104,7 @@ pub fn on_fanotify_event(
 
 /// Set up the fanotify watcher and submit it to the io_uring ring.
 /// Returns the fanotify fd (caller must keep it alive).
+#[allow(dead_code)]
 pub fn setup_watcher(ring: &mut IoUring) -> Result<std::os::fd::OwnedFd, SupervisorError> {
     let fanotify_fd = sys::setup_fanotify()?;
     let sqe = build_poll_multishot(&fanotify_fd, Tag::Inotify);
