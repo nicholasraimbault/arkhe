@@ -69,7 +69,7 @@ pub fn read_signal(fd: &OwnedFd) -> Result<Option<SignalInfo>, SupervisorError> 
     Ok(Some(SignalInfo {
         signo: info.ssi_signo as i32,
         pid: info.ssi_pid,
-        status: info.ssi_status as i32,
+        status: info.ssi_status,
     }))
 }
 
@@ -135,6 +135,7 @@ struct CloneArgs {
 ///
 /// `listen_fds` are raw fds of pre-bound sockets for socket activation.
 /// In the child, they are dup2'd to fd 3, 4, 5... before close_range.
+#[allow(clippy::too_many_arguments)]
 pub fn clone3_exec(
     clone_flags: u64,
     cgroup_fd: RawFd,

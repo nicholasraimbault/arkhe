@@ -311,7 +311,7 @@ fn mark_service_removed(world: &mut World, name: &str) {
 /// Check for a "disabled" marker file in the service directory.
 fn has_disabled_marker(id: ServiceId, world: &World) -> bool {
     let sv_dir = world.run_configs[id].run_path.parent();
-    sv_dir.map_or(false, |d| d.join("disabled").exists())
+    sv_dir.is_some_and(|d| d.join("disabled").exists())
 }
 
 #[cfg(test)]
