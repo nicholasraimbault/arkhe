@@ -53,9 +53,7 @@ pub fn spawn_service(
         .map(|fd| fd.as_raw_fd())
         .collect();
     if !listen_raw_fds.is_empty() {
-        env_cstrings.push(
-            CString::new(format!("LISTEN_FDS={}", listen_raw_fds.len())).unwrap(),
-        );
+        env_cstrings.push(CString::new(format!("LISTEN_FDS={}", listen_raw_fds.len())).unwrap());
         // LISTEN_PID=1 because CLONE_NEWPID gives child PID 1
         env_cstrings.push(CString::new("LISTEN_PID=1").unwrap());
     }
@@ -144,7 +142,9 @@ pub fn spawn_service(
 
     // 11. Set up log file and submit poll on log pipe
     match crate::systems::log::setup_log_dir(&name) {
-        Ok(fd) => { world.log_file_fds[id] = Some(fd); }
+        Ok(fd) => {
+            world.log_file_fds[id] = Some(fd);
+        }
         Err(e) => eprintln!("arkhd: log: failed to set up log for {name}: {e}"),
     }
     if let Some(pipe_fd) = &world.log_pipe_fds[id] {
@@ -202,8 +202,11 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_dir(suffix: &str) -> PathBuf {
-        let dir = std::env::temp_dir()
-            .join(format!("arkhe-spawn-test-{}-{}", std::process::id(), suffix));
+        let dir = std::env::temp_dir().join(format!(
+            "arkhe-spawn-test-{}-{}",
+            std::process::id(),
+            suffix
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -214,7 +217,10 @@ mod tests {
         let dir = test_dir("env-none");
         let env = build_env(&dir.join("env"));
         assert_eq!(env.len(), 1);
-        assert_eq!(env[0].to_str().unwrap(), "PATH=/usr/bin:/usr/sbin:/bin:/sbin");
+        assert_eq!(
+            env[0].to_str().unwrap(),
+            "PATH=/usr/bin:/usr/sbin:/bin:/sbin"
+        );
         let _ = fs::remove_dir_all(&dir);
     }
 

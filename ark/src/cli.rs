@@ -104,7 +104,10 @@ fn status_one(name: &str) -> Result<(), io::Error> {
     // Show config details
     if sv_path.join("depends").exists() {
         let deps = fs::read_to_string(sv_path.join("depends")).unwrap_or_default();
-        let deps: Vec<&str> = deps.lines().filter(|l| !l.trim().is_empty() && !l.starts_with('#')).collect();
+        let deps: Vec<&str> = deps
+            .lines()
+            .filter(|l| !l.trim().is_empty() && !l.starts_with('#'))
+            .collect();
         if !deps.is_empty() {
             println!("depends: {}", deps.join(", "));
         }
@@ -269,7 +272,11 @@ pub fn check(args: &[String]) -> Result<(), io::Error> {
         // Check depends — do referenced services exist?
         if sv_path.join("depends").exists() {
             let content = fs::read_to_string(sv_path.join("depends")).unwrap_or_default();
-            for dep in content.lines().map(|l| l.trim()).filter(|l| !l.is_empty() && !l.starts_with('#')) {
+            for dep in content
+                .lines()
+                .map(|l| l.trim())
+                .filter(|l| !l.is_empty() && !l.starts_with('#'))
+            {
                 // Dependencies are readiness signals, not necessarily service names
                 // but we can check if the service exists
                 if !Path::new(SERVICE_DIR).join(dep).is_dir() {
@@ -298,11 +305,22 @@ pub fn check(args: &[String]) -> Result<(), io::Error> {
 fn is_known_sandbox_key(key: &str) -> bool {
     matches!(
         key,
-        "read" | "write" | "exec" | "bind" | "connect"
-            | "pid-namespace" | "mount-namespace" | "ipc-namespace"
-            | "uts-namespace" | "network-namespace"
-            | "private-tmp" | "read-only-root"
-            | "caps" | "seccomp" | "ipc-scope" | "sandbox"
+        "read"
+            | "write"
+            | "exec"
+            | "bind"
+            | "connect"
+            | "pid-namespace"
+            | "mount-namespace"
+            | "ipc-namespace"
+            | "uts-namespace"
+            | "network-namespace"
+            | "private-tmp"
+            | "read-only-root"
+            | "caps"
+            | "seccomp"
+            | "ipc-scope"
+            | "sandbox"
     )
 }
 
@@ -321,7 +339,10 @@ pub fn new_service(args: &[String]) -> Result<(), io::Error> {
 
     let sv_path = Path::new(SERVICE_DIR).join(name);
     if sv_path.exists() {
-        eprintln!("ark: service '{name}' already exists at {}", sv_path.display());
+        eprintln!(
+            "ark: service '{name}' already exists at {}",
+            sv_path.display()
+        );
         process::exit(1);
     }
 
@@ -473,7 +494,10 @@ pub fn reload(_args: &[String]) -> Result<(), io::Error> {
 
 fn require_arg(args: &[String], cmd: &str) -> Result<String, io::Error> {
     args.first().cloned().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, format!("usage: ark {cmd} <service>"))
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("usage: ark {cmd} <service>"),
+        )
     })
 }
 
@@ -483,8 +507,12 @@ fn require_arg(args: &[String], cmd: &str) -> Result<String, io::Error> {
 /// callers like `reload` can surface the problem rather than silently doing
 /// nothing.
 fn signal_supervisor() -> Result<(), io::Error> {
-    let pid_str = fs::read_to_string(format!("{ARKHE_RUN_DIR}/arkhd.pid"))
-        .map_err(|_| io::Error::new(io::ErrorKind::NotFound, "supervisor not running (no pid file)"))?;
+    let pid_str = fs::read_to_string(format!("{ARKHE_RUN_DIR}/arkhd.pid")).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            "supervisor not running (no pid file)",
+        )
+    })?;
     let pid = pid_str.trim();
     let _ = std::process::Command::new("kill")
         .args(["-HUP", pid])
@@ -549,19 +577,40 @@ mod tests {
         let m = secs_per_minute + 30;
         assert_eq!(format!("{}m{}s", m / 60, m % 60), "1m30s");
         let h = secs_per_hour + secs_per_minute * 5;
-        assert_eq!(format!("{}h{}m", h / secs_per_hour, (h % secs_per_hour) / 60), "1h5m");
+        assert_eq!(
+            format!("{}h{}m", h / secs_per_hour, (h % secs_per_hour) / 60),
+            "1h5m"
+        );
         let d = secs_per_day + secs_per_hour * 3;
-        assert_eq!(format!("{}d{}h", d / secs_per_day, (d % secs_per_day) / secs_per_hour), "1d3h");
+        assert_eq!(
+            format!(
+                "{}d{}h",
+                d / secs_per_day,
+                (d % secs_per_day) / secs_per_hour
+            ),
+            "1d3h"
+        );
     }
 
     #[test]
     fn is_known_sandbox_key_accepts_all_valid_keys() {
         let valid_keys = [
-            "read", "write", "exec", "bind", "connect",
-            "pid-namespace", "mount-namespace", "ipc-namespace",
-            "uts-namespace", "network-namespace",
-            "private-tmp", "read-only-root",
-            "caps", "seccomp", "ipc-scope", "sandbox",
+            "read",
+            "write",
+            "exec",
+            "bind",
+            "connect",
+            "pid-namespace",
+            "mount-namespace",
+            "ipc-namespace",
+            "uts-namespace",
+            "network-namespace",
+            "private-tmp",
+            "read-only-root",
+            "caps",
+            "seccomp",
+            "ipc-scope",
+            "sandbox",
         ];
         for key in &valid_keys {
             assert!(is_known_sandbox_key(key), "expected '{key}' to be known");

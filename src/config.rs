@@ -725,7 +725,10 @@ mod tests {
         );
         assert_eq!(world.sandbox_configs[0].read_paths.len(), 2);
         assert_eq!(world.sandbox_configs[0].bind_ports, vec![8080]);
-        assert_eq!(world.sandbox_configs[0].network_namespace, NetworkNamespace::Host);
+        assert_eq!(
+            world.sandbox_configs[0].network_namespace,
+            NetworkNamespace::Host
+        );
         assert_eq!(
             world.resource_limits[0].as_ref().unwrap().memory_max,
             Some(256 * 1024 * 1024)

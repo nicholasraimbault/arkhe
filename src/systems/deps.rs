@@ -120,8 +120,15 @@ pub fn setup_watcher(ring: &mut IoUring) -> Result<std::os::fd::OwnedFd, Supervi
 pub fn on_deps_poll(world: &mut World, ring: &mut IoUring) -> Result<(), SupervisorError> {
     // 1. Scan /run/ready/ and diff against snapshot
     let current_ready = scan_dir_names("/run/ready");
-    let ready_added: Vec<String> = current_ready.difference(&world.known_ready_files).cloned().collect();
-    let ready_removed: Vec<String> = world.known_ready_files.difference(&current_ready).cloned().collect();
+    let ready_added: Vec<String> = current_ready
+        .difference(&world.known_ready_files)
+        .cloned()
+        .collect();
+    let ready_removed: Vec<String> = world
+        .known_ready_files
+        .difference(&current_ready)
+        .cloned()
+        .collect();
     world.known_ready_files = current_ready;
 
     for name in &ready_added {
@@ -135,8 +142,15 @@ pub fn on_deps_poll(world: &mut World, ring: &mut IoUring) -> Result<(), Supervi
 
     // 2. Scan /etc/sv/ and diff against snapshot
     let current_svcs = scan_dir_names("/etc/sv");
-    let svcs_added: Vec<String> = current_svcs.difference(&world.known_service_dirs).cloned().collect();
-    let svcs_removed: Vec<String> = world.known_service_dirs.difference(&current_svcs).cloned().collect();
+    let svcs_added: Vec<String> = current_svcs
+        .difference(&world.known_service_dirs)
+        .cloned()
+        .collect();
+    let svcs_removed: Vec<String> = world
+        .known_service_dirs
+        .difference(&current_svcs)
+        .cloned()
+        .collect();
     world.known_service_dirs = current_svcs;
 
     for name in &svcs_added {
@@ -169,17 +183,13 @@ fn scan_dir_names(path: &str) -> HashSet<String> {
         .collect()
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // Common helpers
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Check all NotStarted services and spawn those whose dependencies are met.
 /// Also called at startup after initial readiness scan.
-pub fn spawn_ready_services(
-    world: &mut World,
-    ring: &mut IoUring,
-) -> Result<(), SupervisorError> {
+pub fn spawn_ready_services(world: &mut World, ring: &mut IoUring) -> Result<(), SupervisorError> {
     let ready_ids: Vec<ServiceId> = (0..world.len())
         .filter(|&id| {
             matches!(world.states[id], RuntimeState::NotStarted)
@@ -312,8 +322,8 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_dir(suffix: &str) -> PathBuf {
-        let dir = std::env::temp_dir()
-            .join(format!("arkhe-deps-test-{}-{}", std::process::id(), suffix));
+        let dir =
+            std::env::temp_dir().join(format!("arkhe-deps-test-{}-{}", std::process::id(), suffix));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir

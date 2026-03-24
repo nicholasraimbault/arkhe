@@ -109,8 +109,8 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_dir(name: &str) -> PathBuf {
-        let base = std::env::temp_dir()
-            .join(format!("arkhe-cgroup-test-{}-{}", std::process::id(), name));
+        let base =
+            std::env::temp_dir().join(format!("arkhe-cgroup-test-{}-{}", std::process::id(), name));
         let _ = fs::remove_dir_all(&base);
         fs::create_dir_all(&base).unwrap();
         base
@@ -128,9 +128,15 @@ mod tests {
         sys::write_cgroup_file(scope, "pids.max", "64").unwrap();
 
         // Read back and verify
-        assert_eq!(fs::read_to_string(dir.join("memory.max")).unwrap(), "536870912");
+        assert_eq!(
+            fs::read_to_string(dir.join("memory.max")).unwrap(),
+            "536870912"
+        );
         assert_eq!(fs::read_to_string(dir.join("cpu.weight")).unwrap(), "100");
-        assert_eq!(fs::read_to_string(dir.join("cpu.max")).unwrap(), "80000 100000");
+        assert_eq!(
+            fs::read_to_string(dir.join("cpu.max")).unwrap(),
+            "80000 100000"
+        );
         assert_eq!(fs::read_to_string(dir.join("pids.max")).unwrap(), "64");
 
         let _ = fs::remove_dir_all(&dir);
@@ -170,11 +176,20 @@ mod tests {
             sys::write_cgroup_file(s, "pids.max", &max.to_string()).unwrap();
         }
 
-        assert_eq!(fs::read_to_string(scope_dir.join("memory.max")).unwrap(), "536870912");
+        assert_eq!(
+            fs::read_to_string(scope_dir.join("memory.max")).unwrap(),
+            "536870912"
+        );
         assert!(!scope_dir.join("memory.high").exists());
-        assert_eq!(fs::read_to_string(scope_dir.join("cpu.weight")).unwrap(), "100");
+        assert_eq!(
+            fs::read_to_string(scope_dir.join("cpu.weight")).unwrap(),
+            "100"
+        );
         assert!(!scope_dir.join("cpu.max").exists());
-        assert_eq!(fs::read_to_string(scope_dir.join("pids.max")).unwrap(), "64");
+        assert_eq!(
+            fs::read_to_string(scope_dir.join("pids.max")).unwrap(),
+            "64"
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

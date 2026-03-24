@@ -51,15 +51,25 @@ pub fn setup_signals() -> Result<OwnedFd, SupervisorError> {
 pub fn read_signal(fd: &OwnedFd) -> Result<Option<SignalInfo>, SupervisorError> {
     let mut info = MaybeUninit::<libc::signalfd_siginfo>::uninit();
     let n = unsafe {
-        libc::read(fd.as_raw_fd(), info.as_mut_ptr().cast(), std::mem::size_of::<libc::signalfd_siginfo>())
+        libc::read(
+            fd.as_raw_fd(),
+            info.as_mut_ptr().cast(),
+            std::mem::size_of::<libc::signalfd_siginfo>(),
+        )
     };
     if n < 0 {
         let err = io::Error::last_os_error();
-        if err.raw_os_error() == Some(libc::EAGAIN) { return Ok(None); }
+        if err.raw_os_error() == Some(libc::EAGAIN) {
+            return Ok(None);
+        }
         return Err(SupervisorError::SignalRead(err));
     }
     let info = unsafe { info.assume_init() };
-    Ok(Some(SignalInfo { signo: info.ssi_signo as i32, pid: info.ssi_pid, status: info.ssi_status as i32 }))
+    Ok(Some(SignalInfo {
+        signo: info.ssi_signo as i32,
+        pid: info.ssi_pid,
+        status: info.ssi_status as i32,
+    }))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -67,7 +77,10 @@ pub fn read_signal(fd: &OwnedFd) -> Result<Option<SignalInfo>, SupervisorError> 
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /// Push an SQE onto the io_uring submission queue.
-pub fn push_sqe(ring: &mut IoUring, entry: &io_uring::squeue::Entry) -> Result<(), SupervisorError> {
+pub fn push_sqe(
+    ring: &mut IoUring,
+    entry: &io_uring::squeue::Entry,
+) -> Result<(), SupervisorError> {
     unsafe { ring.submission().push(entry) }
         .map_err(|_| SupervisorError::RingSubmit(io::Error::from(io::ErrorKind::Other)))
 }
@@ -103,9 +116,17 @@ pub struct SpawnResult {
 
 #[repr(C)]
 struct CloneArgs {
-    flags: u64, pidfd: u64, child_tid: u64, parent_tid: u64,
-    exit_signal: u64, stack: u64, stack_size: u64, tls: u64,
-    set_tid: u64, set_tid_size: u64, cgroup: u64,
+    flags: u64,
+    pidfd: u64,
+    child_tid: u64,
+    parent_tid: u64,
+    exit_signal: u64,
+    stack: u64,
+    stack_size: u64,
+    tls: u64,
+    set_tid: u64,
+    set_tid_size: u64,
+    cgroup: u64,
 }
 
 /// Fork via clone3, apply sandbox in child, then exec.
@@ -129,17 +150,31 @@ pub fn clone3_exec(
 
     let mut pidfd_out: libc::c_int = -1;
     let args = CloneArgs {
-        flags: clone_flags, pidfd: &mut pidfd_out as *mut libc::c_int as u64,
-        child_tid: 0, parent_tid: 0, exit_signal: libc::SIGCHLD as u64,
-        stack: 0, stack_size: 0, tls: 0, set_tid: 0, set_tid_size: 0,
+        flags: clone_flags,
+        pidfd: &mut pidfd_out as *mut libc::c_int as u64,
+        child_tid: 0,
+        parent_tid: 0,
+        exit_signal: libc::SIGCHLD as u64,
+        stack: 0,
+        stack_size: 0,
+        tls: 0,
+        set_tid: 0,
+        set_tid_size: 0,
         cgroup: cgroup_fd as u64,
     };
 
     let ret = unsafe {
-        libc::syscall(libc::SYS_clone3, &args as *const CloneArgs, std::mem::size_of::<CloneArgs>())
+        libc::syscall(
+            libc::SYS_clone3,
+            &args as *const CloneArgs,
+            std::mem::size_of::<CloneArgs>(),
+        )
     };
     if ret < 0 {
-        return Err(SupervisorError::SpawnFork(String::new(), io::Error::last_os_error()));
+        return Err(SupervisorError::SpawnFork(
+            String::new(),
+            io::Error::last_os_error(),
+        ));
     }
 
     if ret == 0 {
@@ -157,20 +192,26 @@ pub fn clone3_exec(
             crate::systems::mounts::setup_mount_namespace(sandbox_config);
 
             // Apply sandbox (Landlock + seccomp + caps) — needs to open path fds
-            let run_path_for_sandbox = Path::new(
-                std::ffi::OsStr::from_bytes(run_path.to_bytes()),
-            );
+            let run_path_for_sandbox = Path::new(std::ffi::OsStr::from_bytes(run_path.to_bytes()));
             crate::sandbox::apply_sandbox(sandbox_config, run_path_for_sandbox, landlock_abi);
 
             // Close all fds above the socket-activated range
             let close_start = 3u32 + listen_fds.len() as u32;
-            libc::syscall(libc::SYS_close_range, close_start, u32::MAX, CLOSE_RANGE_UNSHARE);
+            libc::syscall(
+                libc::SYS_close_range,
+                close_start,
+                u32::MAX,
+                CLOSE_RANGE_UNSHARE,
+            );
             libc::execve(run_path.as_ptr(), argv.as_ptr(), envp_ptrs.as_ptr());
             libc::_exit(127);
         }
     }
 
-    Ok(SpawnResult { pid: ret as u32, pidfd: unsafe { OwnedFd::from_raw_fd(pidfd_out) } })
+    Ok(SpawnResult {
+        pid: ret as u32,
+        pidfd: unsafe { OwnedFd::from_raw_fd(pidfd_out) },
+    })
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -222,7 +263,8 @@ pub fn setup_fanotify() -> Result<OwnedFd, SupervisorError> {
             libc::AT_FDCWD,
             ready.as_ptr(),
         )
-    } < 0 {
+    } < 0
+    {
         return Err(SupervisorError::FanotifySetup(io::Error::last_os_error()));
     }
 
@@ -237,7 +279,8 @@ pub fn setup_fanotify() -> Result<OwnedFd, SupervisorError> {
             libc::AT_FDCWD,
             sv.as_ptr(),
         )
-    } < 0 {
+    } < 0
+    {
         return Err(SupervisorError::FanotifySetup(io::Error::last_os_error()));
     }
 
@@ -253,17 +296,24 @@ pub fn read_fanotify_events(fd: &OwnedFd) -> Result<Vec<FanotifyEvent>, Supervis
         let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
         if n < 0 {
             let err = io::Error::last_os_error();
-            if err.raw_os_error() == Some(libc::EAGAIN) { break; }
+            if err.raw_os_error() == Some(libc::EAGAIN) {
+                break;
+            }
             return Err(SupervisorError::FanotifyRead(err));
         }
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
 
         let mut offset = 0usize;
         let total = n as usize;
         while offset + 24 <= total {
             // Parse fanotify_event_metadata (24 bytes)
-            let event_len = u32::from_ne_bytes(buf[offset..offset + 4].try_into().unwrap()) as usize;
-            if event_len < 24 || offset + event_len > total { break; }
+            let event_len =
+                u32::from_ne_bytes(buf[offset..offset + 4].try_into().unwrap()) as usize;
+            if event_len < 24 || offset + event_len > total {
+                break;
+            }
             let mask = u64::from_ne_bytes(buf[offset + 8..offset + 16].try_into().unwrap());
             let metadata_len = 24usize;
 
@@ -281,20 +331,33 @@ pub fn read_fanotify_events(fd: &OwnedFd) -> Result<Vec<FanotifyEvent>, Supervis
 
 /// Extract the filename from a DFID_NAME info record.
 fn parse_dfid_name(data: &[u8]) -> Option<String> {
-    if data.len() < 4 { return None; }
+    if data.len() < 4 {
+        return None;
+    }
     let info_type = data[0];
-    if info_type != FAN_EVENT_INFO_TYPE_DFID_NAME { return None; }
+    if info_type != FAN_EVENT_INFO_TYPE_DFID_NAME {
+        return None;
+    }
     let info_len = u16::from_ne_bytes([data[2], data[3]]) as usize;
-    if data.len() < info_len || info_len < 20 { return None; }
+    if data.len() < info_len || info_len < 20 {
+        return None;
+    }
 
     // Layout after header(4): fsid(8) + handle_bytes(4) + handle_type(4) + f_handle[N] + name
     let handle_bytes = u32::from_ne_bytes(data[12..16].try_into().unwrap()) as usize;
     let name_start = 20 + handle_bytes; // 4(hdr) + 8(fsid) + 4(handle_bytes) + 4(handle_type) + N
-    if name_start >= info_len { return None; }
+    if name_start >= info_len {
+        return None;
+    }
 
     let name_data = &data[name_start..info_len];
-    let name_end = name_data.iter().position(|&b| b == 0).unwrap_or(name_data.len());
-    if name_end == 0 { return None; }
+    let name_end = name_data
+        .iter()
+        .position(|&b| b == 0)
+        .unwrap_or(name_data.len());
+    if name_end == 0 {
+        return None;
+    }
 
     String::from_utf8(name_data[..name_end].to_vec()).ok()
 }
@@ -349,7 +412,11 @@ pub fn landlock_abi_version() -> u32 {
             LANDLOCK_CREATE_RULESET_VERSION,
         )
     };
-    if ret < 0 { 0 } else { ret as u32 }
+    if ret < 0 {
+        0
+    } else {
+        ret as u32
+    }
 }
 
 #[repr(C)]
@@ -372,7 +439,11 @@ struct LandlockNetPortAttr {
 }
 
 /// Create a Landlock ruleset. Returns the ruleset fd.
-pub fn landlock_create_ruleset(fs_access: u64, net_access: u64, scoped: u64) -> io::Result<OwnedFd> {
+pub fn landlock_create_ruleset(
+    fs_access: u64,
+    net_access: u64,
+    scoped: u64,
+) -> io::Result<OwnedFd> {
     let attr = LandlockRulesetAttr {
         handled_access_fs: fs_access,
         handled_access_net: net_access,
@@ -386,7 +457,9 @@ pub fn landlock_create_ruleset(fs_access: u64, net_access: u64, scoped: u64) -> 
             0u32,
         ) as i32
     };
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
@@ -396,11 +469,12 @@ pub fn landlock_create_ruleset(fs_access: u64, net_access: u64, scoped: u64) -> 
 /// we automatically use its parent directory instead (slightly more permissive
 /// but correct — Landlock is directory-scoped by design).
 pub fn landlock_add_rule_path(ruleset_fd: &OwnedFd, path: &Path, access: u64) -> io::Result<()> {
-    let path_c = CString::new(path.as_os_str().as_encoded_bytes()).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidInput, "path contains null byte")
-    })?;
+    let path_c = CString::new(path.as_os_str().as_encoded_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "path contains null byte"))?;
     let mut fd = unsafe { libc::open(path_c.as_ptr(), libc::O_PATH | libc::O_CLOEXEC) };
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
 
     // Landlock RULE_PATH_BENEATH requires a directory fd.
     // If the path is a regular file, use its parent directory.
@@ -408,19 +482,25 @@ pub fn landlock_add_rule_path(ruleset_fd: &OwnedFd, path: &Path, access: u64) ->
     if unsafe { libc::fstat(fd, &mut stat_buf) } == 0
         && (stat_buf.st_mode & libc::S_IFMT) == libc::S_IFREG
     {
-        unsafe { libc::close(fd); }
+        unsafe {
+            libc::close(fd);
+        }
         let parent = match path.parent() {
             Some(p) if !p.as_os_str().is_empty() => p,
             _ => return Ok(()), // no parent — skip rule
         };
-        let parent_c = CString::new(parent.as_os_str().as_encoded_bytes()).map_err(|_| {
-            io::Error::new(io::ErrorKind::InvalidInput, "path contains null byte")
-        })?;
+        let parent_c = CString::new(parent.as_os_str().as_encoded_bytes())
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "path contains null byte"))?;
         fd = unsafe { libc::open(parent_c.as_ptr(), libc::O_PATH | libc::O_CLOEXEC) };
-        if fd < 0 { return Err(io::Error::last_os_error()); }
+        if fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
     }
 
-    let attr = LandlockPathBeneathAttr { allowed_access: access, parent_fd: fd };
+    let attr = LandlockPathBeneathAttr {
+        allowed_access: access,
+        parent_fd: fd,
+    };
     let ret = unsafe {
         libc::syscall(
             SYS_LANDLOCK_ADD_RULE,
@@ -430,14 +510,21 @@ pub fn landlock_add_rule_path(ruleset_fd: &OwnedFd, path: &Path, access: u64) ->
             0u32,
         )
     };
-    unsafe { libc::close(fd); }
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    unsafe {
+        libc::close(fd);
+    }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
 /// Add a network port rule to a Landlock ruleset.
 pub fn landlock_add_rule_net(ruleset_fd: &OwnedFd, port: u16, access: u64) -> io::Result<()> {
-    let attr = LandlockNetPortAttr { allowed_access: access, port: port as u64 };
+    let attr = LandlockNetPortAttr {
+        allowed_access: access,
+        port: port as u64,
+    };
     let ret = unsafe {
         libc::syscall(
             SYS_LANDLOCK_ADD_RULE,
@@ -447,7 +534,9 @@ pub fn landlock_add_rule_net(ruleset_fd: &OwnedFd, port: u16, access: u64) -> io
             0u32,
         )
     };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -458,10 +547,10 @@ pub fn landlock_restrict_self(ruleset_fd: &OwnedFd) -> io::Result<()> {
     if unsafe { libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) } < 0 {
         return Err(io::Error::last_os_error());
     }
-    let ret = unsafe {
-        libc::syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd.as_raw_fd(), 0u32)
-    };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    let ret = unsafe { libc::syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd.as_raw_fd(), 0u32) };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -470,18 +559,26 @@ pub fn landlock_restrict_self(ruleset_fd: &OwnedFd) -> io::Result<()> {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 #[repr(C)]
-struct SockFilter { code: u16, jt: u8, jf: u8, k: u32 }
+struct SockFilter {
+    code: u16,
+    jt: u8,
+    jf: u8,
+    k: u32,
+}
 #[repr(C)]
-struct SockFprog { len: u16, filter: *const SockFilter }
+struct SockFprog {
+    len: u16,
+    filter: *const SockFilter,
+}
 
 const SECCOMP_SET_MODE_FILTER: libc::c_uint = 1;
 const SECCOMP_RET_ALLOW: u32 = 0x7fff_0000;
 const SECCOMP_RET_ERRNO_EPERM: u32 = 0x0005_0000 | 1; // SECCOMP_RET_ERRNO | EPERM
 
 // BPF opcodes
-const BPF_LD_W_ABS: u16 = 0x20;  // BPF_LD | BPF_W | BPF_ABS
+const BPF_LD_W_ABS: u16 = 0x20; // BPF_LD | BPF_W | BPF_ABS
 const BPF_JMP_JEQ_K: u16 = 0x15; // BPF_JMP | BPF_JEQ | BPF_K
-const BPF_RET_K: u16 = 0x06;     // BPF_RET | BPF_K
+const BPF_RET_K: u16 = 0x06; // BPF_RET | BPF_K
 
 #[cfg(target_arch = "x86_64")]
 const AUDIT_ARCH: u32 = 0xC000_003E;
@@ -560,15 +657,28 @@ pub fn apply_seccomp_default() -> io::Result<()> {
     let deny_count = DENIED_SYSCALLS.len();
 
     // Load architecture
-    filter.push(SockFilter { code: BPF_LD_W_ABS, jt: 0, jf: 0, k: 4 }); // offsetof(seccomp_data, arch)
-    // If wrong arch → kill (jump over all instructions to deny)
+    filter.push(SockFilter {
+        code: BPF_LD_W_ABS,
+        jt: 0,
+        jf: 0,
+        k: 4,
+    }); // offsetof(seccomp_data, arch)
+        // If wrong arch → kill (jump over all instructions to deny)
     let total_after_arch = 1 + deny_count + 1; // load_nr + N deny checks + allow
     filter.push(SockFilter {
-        code: BPF_JMP_JEQ_K, jt: 0, jf: total_after_arch as u8, k: AUDIT_ARCH,
+        code: BPF_JMP_JEQ_K,
+        jt: 0,
+        jf: total_after_arch as u8,
+        k: AUDIT_ARCH,
     });
 
     // Load syscall number
-    filter.push(SockFilter { code: BPF_LD_W_ABS, jt: 0, jf: 0, k: 0 }); // offsetof(seccomp_data, nr)
+    filter.push(SockFilter {
+        code: BPF_LD_W_ABS,
+        jt: 0,
+        jf: 0,
+        k: 0,
+    }); // offsetof(seccomp_data, nr)
 
     // For each denied syscall: if match, jump to deny
     for (i, &nr) in DENIED_SYSCALLS.iter().enumerate() {
@@ -576,21 +686,41 @@ pub fn apply_seccomp_default() -> io::Result<()> {
         filter.push(SockFilter {
             code: BPF_JMP_JEQ_K,
             jt: (remaining + 1) as u8, // jump to DENY (past remaining checks + ALLOW)
-            jf: 0,                      // continue checking
+            jf: 0,                     // continue checking
             k: nr as u32,
         });
     }
 
     // Default: allow
-    filter.push(SockFilter { code: BPF_RET_K, jt: 0, jf: 0, k: SECCOMP_RET_ALLOW });
+    filter.push(SockFilter {
+        code: BPF_RET_K,
+        jt: 0,
+        jf: 0,
+        k: SECCOMP_RET_ALLOW,
+    });
     // Deny
-    filter.push(SockFilter { code: BPF_RET_K, jt: 0, jf: 0, k: SECCOMP_RET_ERRNO_EPERM });
+    filter.push(SockFilter {
+        code: BPF_RET_K,
+        jt: 0,
+        jf: 0,
+        k: SECCOMP_RET_ERRNO_EPERM,
+    });
 
-    let prog = SockFprog { len: filter.len() as u16, filter: filter.as_ptr() };
-    let ret = unsafe {
-        libc::syscall(libc::SYS_seccomp, SECCOMP_SET_MODE_FILTER, 0u32, &prog as *const SockFprog)
+    let prog = SockFprog {
+        len: filter.len() as u16,
+        filter: filter.as_ptr(),
     };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    let ret = unsafe {
+        libc::syscall(
+            libc::SYS_seccomp,
+            SECCOMP_SET_MODE_FILTER,
+            0u32,
+            &prog as *const SockFprog,
+        )
+    };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -604,20 +734,46 @@ const CAP_LAST_CAP: u32 = 41;
 pub fn cap_name_to_number(name: &str) -> Option<u32> {
     let name = name.strip_prefix("cap_").unwrap_or(name);
     match name {
-        "chown" => Some(0), "dac_override" => Some(1), "dac_read_search" => Some(2),
-        "fowner" => Some(3), "fsetid" => Some(4), "kill" => Some(5),
-        "setgid" => Some(6), "setuid" => Some(7), "setpcap" => Some(8),
-        "linux_immutable" => Some(9), "net_bind_service" => Some(10),
-        "net_broadcast" => Some(11), "net_admin" => Some(12), "net_raw" => Some(13),
-        "ipc_lock" => Some(14), "ipc_owner" => Some(15),
-        "sys_module" => Some(16), "sys_rawio" => Some(17), "sys_chroot" => Some(18),
-        "sys_ptrace" => Some(19), "sys_pacct" => Some(20), "sys_admin" => Some(21),
-        "sys_boot" => Some(22), "sys_nice" => Some(23), "sys_resource" => Some(24),
-        "sys_time" => Some(25), "sys_tty_config" => Some(26), "mknod" => Some(27),
-        "lease" => Some(28), "audit_write" => Some(29), "audit_control" => Some(30),
-        "setfcap" => Some(31), "mac_override" => Some(32), "mac_admin" => Some(33),
-        "syslog" => Some(34), "wake_alarm" => Some(35), "block_suspend" => Some(36),
-        "audit_read" => Some(37), "perfmon" => Some(38), "bpf" => Some(39),
+        "chown" => Some(0),
+        "dac_override" => Some(1),
+        "dac_read_search" => Some(2),
+        "fowner" => Some(3),
+        "fsetid" => Some(4),
+        "kill" => Some(5),
+        "setgid" => Some(6),
+        "setuid" => Some(7),
+        "setpcap" => Some(8),
+        "linux_immutable" => Some(9),
+        "net_bind_service" => Some(10),
+        "net_broadcast" => Some(11),
+        "net_admin" => Some(12),
+        "net_raw" => Some(13),
+        "ipc_lock" => Some(14),
+        "ipc_owner" => Some(15),
+        "sys_module" => Some(16),
+        "sys_rawio" => Some(17),
+        "sys_chroot" => Some(18),
+        "sys_ptrace" => Some(19),
+        "sys_pacct" => Some(20),
+        "sys_admin" => Some(21),
+        "sys_boot" => Some(22),
+        "sys_nice" => Some(23),
+        "sys_resource" => Some(24),
+        "sys_time" => Some(25),
+        "sys_tty_config" => Some(26),
+        "mknod" => Some(27),
+        "lease" => Some(28),
+        "audit_write" => Some(29),
+        "audit_control" => Some(30),
+        "setfcap" => Some(31),
+        "mac_override" => Some(32),
+        "mac_admin" => Some(33),
+        "syslog" => Some(34),
+        "wake_alarm" => Some(35),
+        "block_suspend" => Some(36),
+        "audit_read" => Some(37),
+        "perfmon" => Some(38),
+        "bpf" => Some(39),
         "checkpoint_restore" => Some(40),
         _ => None,
     }
@@ -630,7 +786,9 @@ pub fn cap_name_to_number(name: &str) -> Option<u32> {
 /// Send a signal to a process by PID.
 pub fn kill_service(pid: u32, sig: i32) -> io::Result<()> {
     let ret = unsafe { libc::kill(pid as libc::pid_t, sig) };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -643,7 +801,9 @@ pub fn read_pipe(fd: &OwnedFd, buf: &mut [u8]) -> io::Result<usize> {
     let n = unsafe { libc::read(fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
     if n < 0 {
         let err = io::Error::last_os_error();
-        if err.raw_os_error() == Some(libc::EAGAIN) { return Ok(0); }
+        if err.raw_os_error() == Some(libc::EAGAIN) {
+            return Ok(0);
+        }
         return Err(err);
     }
     Ok(n as usize)
@@ -654,11 +814,17 @@ pub fn write_all(fd: &OwnedFd, data: &[u8]) -> io::Result<()> {
     let mut written = 0;
     while written < data.len() {
         let n = unsafe {
-            libc::write(fd.as_raw_fd(), data[written..].as_ptr().cast(), data.len() - written)
+            libc::write(
+                fd.as_raw_fd(),
+                data[written..].as_ptr().cast(),
+                data.len() - written,
+            )
         };
         if n < 0 {
             let err = io::Error::last_os_error();
-            if err.raw_os_error() == Some(libc::EINTR) { continue; }
+            if err.raw_os_error() == Some(libc::EINTR) {
+                continue;
+            }
             return Err(err);
         }
         written += n as usize;
@@ -674,7 +840,9 @@ const P_PIDFD: libc::idtype_t = 3;
 
 /// Wait for a child process via its pidfd. Returns (exit_code, signal).
 /// Uses WNOHANG so it never blocks.
-pub fn waitid_pidfd(pidfd: &OwnedFd) -> Result<(Option<i32>, Option<i32>), crate::error::SupervisorError> {
+pub fn waitid_pidfd(
+    pidfd: &OwnedFd,
+) -> Result<(Option<i32>, Option<i32>), crate::error::SupervisorError> {
     let mut siginfo: libc::siginfo_t = unsafe { std::mem::zeroed() };
     let ret = unsafe {
         libc::waitid(
@@ -685,14 +853,15 @@ pub fn waitid_pidfd(pidfd: &OwnedFd) -> Result<(Option<i32>, Option<i32>), crate
         )
     };
     if ret < 0 {
-        return Err(crate::error::SupervisorError::WaitId(io::Error::last_os_error()));
+        return Err(crate::error::SupervisorError::WaitId(
+            io::Error::last_os_error(),
+        ));
     }
     // Extract si_code and si_status from siginfo_t.
     // On Linux, si_code is at offset 8, si_status at offset 24.
     let si_code = siginfo.si_code;
-    let si_status = unsafe {
-        *(((&siginfo) as *const libc::siginfo_t as *const u8).add(24) as *const i32)
-    };
+    let si_status =
+        unsafe { *(((&siginfo) as *const libc::siginfo_t as *const u8).add(24) as *const i32) };
     match si_code {
         libc::CLD_EXITED => Ok((Some(si_status), None)),
         libc::CLD_KILLED | libc::CLD_DUMPED => Ok((None, Some(si_status))),
@@ -716,7 +885,9 @@ pub fn alloc_timespec(secs: u64) -> (*const io_uring::types::Timespec, u64) {
 /// Free a Timespec previously allocated by alloc_timespec.
 pub fn free_timespec(handle: u64) {
     if handle != 0 {
-        unsafe { drop(Box::from_raw(handle as *mut io_uring::types::Timespec)); }
+        unsafe {
+            drop(Box::from_raw(handle as *mut io_uring::types::Timespec));
+        }
     }
 }
 
@@ -726,13 +897,24 @@ pub fn free_timespec(handle: u64) {
 
 /// Create a repeating timerfd that fires every `interval_secs` seconds.
 pub fn create_timerfd(interval_secs: u64) -> Result<OwnedFd, SupervisorError> {
-    let fd = unsafe { libc::timerfd_create(libc::CLOCK_MONOTONIC, libc::TFD_NONBLOCK | libc::TFD_CLOEXEC) };
+    let fd = unsafe {
+        libc::timerfd_create(
+            libc::CLOCK_MONOTONIC,
+            libc::TFD_NONBLOCK | libc::TFD_CLOEXEC,
+        )
+    };
     if fd < 0 {
         return Err(SupervisorError::RingInit(io::Error::last_os_error()));
     }
     let spec = libc::itimerspec {
-        it_interval: libc::timespec { tv_sec: interval_secs as i64, tv_nsec: 0 },
-        it_value: libc::timespec { tv_sec: interval_secs as i64, tv_nsec: 0 },
+        it_interval: libc::timespec {
+            tv_sec: interval_secs as i64,
+            tv_nsec: 0,
+        },
+        it_value: libc::timespec {
+            tv_sec: interval_secs as i64,
+            tv_nsec: 0,
+        },
     };
     let ret = unsafe { libc::timerfd_settime(fd, 0, &spec, std::ptr::null_mut()) };
     if ret < 0 {
@@ -788,7 +970,9 @@ pub fn accept_fd(listen_fd: &OwnedFd) -> io::Result<OwnedFd> {
             libc::SOCK_CLOEXEC,
         )
     };
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
@@ -811,7 +995,9 @@ pub fn make_private_propagation() -> io::Result<()> {
     if ret < 0 {
         let err = io::Error::last_os_error();
         // EINVAL means already private or no mount namespace — not an error
-        if err.raw_os_error() == Some(libc::EINVAL) { return Ok(()); }
+        if err.raw_os_error() == Some(libc::EINVAL) {
+            return Ok(());
+        }
         return Err(err);
     }
     Ok(())
@@ -835,9 +1021,7 @@ pub fn remount_readonly_root() -> io::Result<()> {
     if ret < 0 {
         let err = io::Error::last_os_error();
         // ENOSPC = mount table full, EPERM = no privilege — non-fatal
-        if err.raw_os_error() == Some(libc::ENOSPC)
-            || err.raw_os_error() == Some(libc::EPERM)
-        {
+        if err.raw_os_error() == Some(libc::ENOSPC) || err.raw_os_error() == Some(libc::EPERM) {
             return Ok(());
         }
         return Err(err);
@@ -855,7 +1039,9 @@ pub fn remount_readonly_root() -> io::Result<()> {
     };
     if ret < 0 {
         let err = io::Error::last_os_error();
-        if err.raw_os_error() == Some(libc::ENOSPC) { return Ok(()); }
+        if err.raw_os_error() == Some(libc::ENOSPC) {
+            return Ok(());
+        }
         return Err(err);
     }
     Ok(())
@@ -874,7 +1060,9 @@ pub fn mount_tmpfs(path: &Path) -> io::Result<()> {
             b"size=64M,mode=1777\0".as_ptr().cast(),
         )
     };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -912,7 +1100,9 @@ pub fn open_tree(path: &Path) -> io::Result<OwnedFd> {
             OPEN_TREE_CLONE | AT_RECURSIVE | libc::O_CLOEXEC as libc::c_uint,
         ) as i32
     };
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
@@ -928,13 +1118,15 @@ pub fn mount_setattr_idmap(mount_fd: &OwnedFd, userns_fd: &OwnedFd) -> io::Resul
         libc::syscall(
             SYS_MOUNT_SETATTR,
             mount_fd.as_raw_fd(),
-            b"\0".as_ptr(),       // AT_EMPTY_PATH
+            b"\0".as_ptr(), // AT_EMPTY_PATH
             libc::AT_EMPTY_PATH,
             &attr as *const MountAttr,
             std::mem::size_of::<MountAttr>(),
         )
     };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -946,13 +1138,15 @@ pub fn move_mount(from_fd: &OwnedFd, to_path: &Path) -> io::Result<()> {
         libc::syscall(
             SYS_MOVE_MOUNT,
             from_fd.as_raw_fd(),
-            b"\0".as_ptr(),       // empty source path (use the fd)
+            b"\0".as_ptr(), // empty source path (use the fd)
             libc::AT_FDCWD,
             to_c.as_ptr(),
             MOVE_MOUNT_F_EMPTY_PATH,
         )
     };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }
 
@@ -963,8 +1157,7 @@ pub fn move_mount(from_fd: &OwnedFd, to_path: &Path) -> io::Result<()> {
 /// Write a value to a cgroup interface file.
 pub fn write_cgroup_file(cgroup_path: &str, filename: &str, value: &str) -> io::Result<()> {
     let path = format!("{cgroup_path}/{filename}");
-    std::fs::write(&path, value)
-        .map_err(|e| io::Error::new(e.kind(), format!("{path}: {e}")))
+    std::fs::write(&path, value).map_err(|e| io::Error::new(e.kind(), format!("{path}: {e}")))
 }
 
 /// Open a cgroup PSI pressure file with a trigger, returning a pollable fd.
@@ -976,15 +1169,18 @@ pub fn setup_psi_trigger(cgroup_path: &str, resource: &str, trigger: &str) -> io
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "null in path"))?;
 
     let fd = unsafe {
-        libc::open(path_c.as_ptr(), libc::O_RDWR | libc::O_NONBLOCK | libc::O_CLOEXEC)
+        libc::open(
+            path_c.as_ptr(),
+            libc::O_RDWR | libc::O_NONBLOCK | libc::O_CLOEXEC,
+        )
     };
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
     let owned = unsafe { OwnedFd::from_raw_fd(fd) };
 
     // Write trigger definition — this arms the PSI notification
-    let n = unsafe {
-        libc::write(owned.as_raw_fd(), trigger.as_ptr().cast(), trigger.len())
-    };
+    let n = unsafe { libc::write(owned.as_raw_fd(), trigger.as_ptr().cast(), trigger.len()) };
     if n < 0 {
         return Err(io::Error::new(
             io::Error::last_os_error().kind(),
@@ -1025,23 +1221,38 @@ pub fn drop_capabilities(keep: &[String]) -> io::Result<()> {
 
     // capset syscall — _LINUX_CAPABILITY_VERSION_3 = 0x20080522
     #[repr(C)]
-    struct CapHeader { version: u32, pid: i32 }
+    struct CapHeader {
+        version: u32,
+        pid: i32,
+    }
     #[repr(C)]
-    struct CapData { effective: u32, permitted: u32, inheritable: u32 }
+    struct CapData {
+        effective: u32,
+        permitted: u32,
+        inheritable: u32,
+    }
 
-    let header = CapHeader { version: 0x2008_0522, pid: 0 };
+    let header = CapHeader {
+        version: 0x2008_0522,
+        pid: 0,
+    };
     let data = [
-        CapData { effective: effective[0], permitted: permitted[0], inheritable: 0 },
-        CapData { effective: effective[1], permitted: permitted[1], inheritable: 0 },
+        CapData {
+            effective: effective[0],
+            permitted: permitted[0],
+            inheritable: 0,
+        },
+        CapData {
+            effective: effective[1],
+            permitted: permitted[1],
+            inheritable: 0,
+        },
     ];
 
-    let ret = unsafe {
-        libc::syscall(
-            libc::SYS_capset,
-            &header as *const CapHeader,
-            data.as_ptr(),
-        )
-    };
-    if ret < 0 { return Err(io::Error::last_os_error()); }
+    let ret =
+        unsafe { libc::syscall(libc::SYS_capset, &header as *const CapHeader, data.as_ptr()) };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
     Ok(())
 }

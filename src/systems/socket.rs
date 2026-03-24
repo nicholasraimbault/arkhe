@@ -32,10 +32,9 @@ pub fn setup_sockets(world: &mut World, ring: &mut IoUring) -> Result<(), Superv
                     .map_err(|e| SupervisorError::SocketBind(format!("tcp:{port}"), e)),
                 ListenAddr::Tcp6(sa) => sys::bind_tcp_addr(*sa)
                     .map_err(|e| SupervisorError::SocketBind(format!("tcp6:{sa}"), e)),
-                ListenAddr::Unix(path) => sys::bind_unix(path)
-                    .map_err(|e| SupervisorError::SocketBind(
-                        format!("unix:{}", path.display()), e,
-                    )),
+                ListenAddr::Unix(path) => sys::bind_unix(path).map_err(|e| {
+                    SupervisorError::SocketBind(format!("unix:{}", path.display()), e)
+                }),
             };
 
             match fd {
@@ -46,7 +45,8 @@ pub fn setup_sockets(world: &mut World, ring: &mut IoUring) -> Result<(), Superv
 
                     world.socket_map.insert(listen_fd.as_raw_fd(), id);
                     world.listen_fds[id].push(listen_fd);
-                    eprintln!("arkhd: socket: bound {addr_desc} for {name}",
+                    eprintln!(
+                        "arkhd: socket: bound {addr_desc} for {name}",
                         addr_desc = match addr {
                             ListenAddr::Tcp(p) => format!("tcp:{p}"),
                             ListenAddr::Tcp6(sa) => format!("tcp6:{sa}"),
@@ -103,10 +103,8 @@ mod tests {
 
     #[test]
     fn bind_unix_and_cleanup() {
-        let path = std::env::temp_dir().join(format!(
-            "arkhe-sock-test-{}.sock",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("arkhe-sock-test-{}.sock", std::process::id()));
         let path_buf = PathBuf::from(&path);
 
         match sys::bind_unix(&path_buf) {

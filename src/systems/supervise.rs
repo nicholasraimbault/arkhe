@@ -48,9 +48,7 @@ pub fn on_service_exit(
 
     // 5. If this was a manual stop (Stopping state), don't restart
     if matches!(old_state, RuntimeState::Stopping { .. }) {
-        eprintln!(
-            "arkhd: supervise: {name} stopped (code={exit_code:?} signal={signal:?})"
-        );
+        eprintln!("arkhd: supervise: {name} stopped (code={exit_code:?} signal={signal:?})");
         return Ok(());
     }
 
@@ -170,10 +168,7 @@ pub fn on_stop_timeout(world: &mut World, id: ServiceId) -> Result<(), Superviso
 
 /// Process control files written by the CLI. Called on SIGHUP.
 /// Scans /run/arkhe/<name>/ctl/ for stop/start commands.
-pub fn process_control_files(
-    world: &mut World,
-    ring: &mut IoUring,
-) -> Result<(), SupervisorError> {
+pub fn process_control_files(world: &mut World, ring: &mut IoUring) -> Result<(), SupervisorError> {
     for id in 0..world.len() {
         let name = world.names[id].clone();
         let ctl_dir = format!("/run/arkhe/{name}/ctl");
@@ -191,7 +186,10 @@ pub fn process_control_files(
             let _ = std::fs::remove_file(&start_file);
             eprintln!("arkhd: ctl: start command for {name}");
             world.run_configs[id].enabled = true;
-            if matches!(world.states[id], RuntimeState::Stopped { .. } | RuntimeState::NotStarted) {
+            if matches!(
+                world.states[id],
+                RuntimeState::Stopped { .. } | RuntimeState::NotStarted
+            ) {
                 world.states[id] = RuntimeState::NotStarted;
                 world.log_pipe_fds[id] = None;
                 world.log_file_fds[id] = None;
@@ -252,9 +250,21 @@ mod tests {
 
     #[test]
     fn state_transitions() {
-        let running = RuntimeState::Running { pid: 42, started_at: Instant::now() };
+        let running = RuntimeState::Running {
+            pid: 42,
+            started_at: Instant::now(),
+        };
         assert!(matches!(running, RuntimeState::Running { pid: 42, .. }));
-        let stopped = RuntimeState::Stopped { exit_code: Some(0), signal: None };
-        assert!(matches!(stopped, RuntimeState::Stopped { exit_code: Some(0), .. }));
+        let stopped = RuntimeState::Stopped {
+            exit_code: Some(0),
+            signal: None,
+        };
+        assert!(matches!(
+            stopped,
+            RuntimeState::Stopped {
+                exit_code: Some(0),
+                ..
+            }
+        ));
     }
 }

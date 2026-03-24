@@ -4,4 +4,4 @@
 //! See CLAUDE.md for build priority order.
 
 #[allow(unused)]
-use crate::world::{World, ServiceId};
+use crate::world::{ServiceId, World};

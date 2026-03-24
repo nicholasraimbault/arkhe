@@ -77,7 +77,11 @@ pub fn build_poll_multishot(fd: &impl AsRawFd, tag: Tag) -> io_uring::squeue::En
 }
 
 /// Build a multishot poll SQE with a custom event mask.
-pub fn build_poll_multishot_mask(fd: &impl AsRawFd, mask: u32, tag: Tag) -> io_uring::squeue::Entry {
+pub fn build_poll_multishot_mask(
+    fd: &impl AsRawFd,
+    mask: u32,
+    tag: Tag,
+) -> io_uring::squeue::Entry {
     opcode::PollAdd::new(Fd(fd.as_raw_fd()), mask)
         .multi(true)
         .build()
@@ -87,9 +91,7 @@ pub fn build_poll_multishot_mask(fd: &impl AsRawFd, mask: u32, tag: Tag) -> io_u
 /// Build a one-shot timeout SQE. The Timespec pointer must remain valid
 /// until the CQE is reaped (caller manages lifetime via sys::alloc_timespec).
 pub fn build_timeout(ts: *const Timespec, tag: Tag) -> io_uring::squeue::Entry {
-    opcode::Timeout::new(ts)
-        .build()
-        .user_data(encode_tag(tag))
+    opcode::Timeout::new(ts).build().user_data(encode_tag(tag))
 }
 
 #[cfg(test)]
@@ -104,7 +106,10 @@ mod tests {
             assert_eq!(decode_tag(encode_tag(Tag::Accept(id))), Tag::Accept(id));
             assert_eq!(decode_tag(encode_tag(Tag::Psi(id))), Tag::Psi(id));
             assert_eq!(decode_tag(encode_tag(Tag::Restart(id))), Tag::Restart(id));
-            assert_eq!(decode_tag(encode_tag(Tag::StopTimeout(id))), Tag::StopTimeout(id));
+            assert_eq!(
+                decode_tag(encode_tag(Tag::StopTimeout(id))),
+                Tag::StopTimeout(id)
+            );
         }
         assert_eq!(decode_tag(encode_tag(Tag::Signal)), Tag::Signal);
         assert_eq!(decode_tag(encode_tag(Tag::Inotify)), Tag::Inotify);

@@ -46,13 +46,13 @@ pub enum NetworkNamespace {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SeccompProfile {
-    Default,   // @system-service whitelist
-    Disabled,  // no seccomp (only in permissive mode)
+    Default,  // @system-service whitelist
+    Disabled, // no seccomp (only in permissive mode)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum IpcScope {
-    Scoped,      // landlock: restrict abstract unix sockets + signals
+    Scoped, // landlock: restrict abstract unix sockets + signals
     Unscoped,
 }
 
@@ -108,14 +108,14 @@ pub enum ListenAddr {
 
 /// Parsed from /etc/sv/<name>/log/config (or defaults)
 pub struct LogConfig {
-    pub max_size: u64,   // bytes
+    pub max_size: u64, // bytes
     pub max_files: u32,
 }
 
 impl Default for LogConfig {
     fn default() -> Self {
         LogConfig {
-            max_size: 1_048_576,  // 1 MB
+            max_size: 1_048_576, // 1 MB
             max_files: 10,
         }
     }
@@ -161,9 +161,9 @@ pub struct ReadinessState {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ReadinessMode {
-    File,     // service creates /run/ready/<name>
-    Fd,       // supervisor passes notification fd
-    Timeout,  // assume ready after timeout
+    File,    // service creates /run/ready/<name>
+    Fd,      // supervisor passes notification fd
+    Timeout, // assume ready after timeout
 }
 
 impl Default for ReadinessState {

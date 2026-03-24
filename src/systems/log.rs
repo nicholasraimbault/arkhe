@@ -116,8 +116,8 @@ mod tests {
     use std::path::PathBuf;
 
     fn test_dir(suffix: &str) -> PathBuf {
-        let base = std::env::temp_dir()
-            .join(format!("arkhe-log-test-{}-{}", std::process::id(), suffix));
+        let base =
+            std::env::temp_dir().join(format!("arkhe-log-test-{}-{}", std::process::id(), suffix));
         let _ = fs::remove_dir_all(&base);
         base
     }

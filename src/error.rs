@@ -24,9 +24,9 @@ pub enum SupervisorError {
     FanotifySetup(std::io::Error),
     FanotifyRead(std::io::Error),
     Sandbox(String),
-    LogWrite(String, std::io::Error),     // (service_name, error)
+    LogWrite(String, std::io::Error), // (service_name, error)
     WaitId(std::io::Error),
-    SocketBind(String, std::io::Error),   // (description, error)
+    SocketBind(String, std::io::Error), // (description, error)
 }
 
 impl fmt::Display for SupervisorError {

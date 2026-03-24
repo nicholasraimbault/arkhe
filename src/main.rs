@@ -17,14 +17,14 @@ mod sys;
 mod world;
 
 pub mod systems {
-    pub mod spawn;
-    pub mod supervise;
     pub mod deps;
     pub mod log;
-    pub mod socket;
-    pub mod pressure;
-    pub mod status;
     pub mod mounts;
+    pub mod pressure;
+    pub mod socket;
+    pub mod spawn;
+    pub mod status;
+    pub mod supervise;
 }
 
 use std::os::fd::OwnedFd;
@@ -144,7 +144,10 @@ fn event_loop(
         // briefly when idle. This guarantees deps polling runs every second.
         ring.submit().map_err(SupervisorError::RingSubmit)?;
 
-        let tags: Vec<Tag> = ring.completion().map(|cqe| decode_tag(cqe.user_data())).collect();
+        let tags: Vec<Tag> = ring
+            .completion()
+            .map(|cqe| decode_tag(cqe.user_data()))
+            .collect();
 
         if tags.is_empty() {
             std::thread::sleep(std::time::Duration::from_millis(200));
@@ -160,7 +163,10 @@ fn event_loop(
                         if let Err(e) =
                             systems::supervise::on_service_exit(world, id, ring, *shutting_down)
                         {
-                            log!("supervise: error handling exit for {}: {e}", world.names[id]);
+                            log!(
+                                "supervise: error handling exit for {}: {e}",
+                                world.names[id]
+                            );
                         }
                         if let Err(e) = systems::deps::spawn_ready_services(world, ring) {
                             log!("deps: error after exit: {e}");

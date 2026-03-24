@@ -128,18 +128,30 @@ fn apply_landlock(config: &SandboxConfig, run_script: &Path, abi: u32) {
     let read_access = (sys::LL_FS_READ_FILE | sys::LL_FS_READ_DIR) & fs_mask;
     for path in &config.read_paths {
         if let Err(e) = sys::landlock_add_rule_path(&ruleset, path, read_access) {
-            eprintln!("arkhd: sandbox: landlock read rule for {}: {e}", path.display());
+            eprintln!(
+                "arkhd: sandbox: landlock read rule for {}: {e}",
+                path.display()
+            );
         }
     }
 
     // Write paths → read + write + create + remove access
-    let write_access = (sys::LL_FS_READ_FILE | sys::LL_FS_READ_DIR | sys::LL_FS_WRITE_FILE
-        | sys::LL_FS_REMOVE_FILE | sys::LL_FS_REMOVE_DIR
-        | sys::LL_FS_MAKE_REG | sys::LL_FS_MAKE_DIR
-        | sys::LL_FS_MAKE_SYM | sys::LL_FS_TRUNCATE) & fs_mask;
+    let write_access = (sys::LL_FS_READ_FILE
+        | sys::LL_FS_READ_DIR
+        | sys::LL_FS_WRITE_FILE
+        | sys::LL_FS_REMOVE_FILE
+        | sys::LL_FS_REMOVE_DIR
+        | sys::LL_FS_MAKE_REG
+        | sys::LL_FS_MAKE_DIR
+        | sys::LL_FS_MAKE_SYM
+        | sys::LL_FS_TRUNCATE)
+        & fs_mask;
     for path in &config.write_paths {
         if let Err(e) = sys::landlock_add_rule_path(&ruleset, path, write_access) {
-            eprintln!("arkhd: sandbox: landlock write rule for {}: {e}", path.display());
+            eprintln!(
+                "arkhd: sandbox: landlock write rule for {}: {e}",
+                path.display()
+            );
         }
     }
 
@@ -147,25 +159,28 @@ fn apply_landlock(config: &SandboxConfig, run_script: &Path, abi: u32) {
     let exec_access = (sys::LL_FS_READ_FILE | sys::LL_FS_READ_DIR | sys::LL_FS_EXECUTE) & fs_mask;
     for path in &config.exec_paths {
         if let Err(e) = sys::landlock_add_rule_path(&ruleset, path, exec_access) {
-            eprintln!("arkhd: sandbox: landlock exec rule for {}: {e}", path.display());
+            eprintln!(
+                "arkhd: sandbox: landlock exec rule for {}: {e}",
+                path.display()
+            );
         }
     }
 
     // Network: bind ports (only if ABI supports it)
     if net_mask > 0 {
         for &port in &config.bind_ports {
-            if let Err(e) = sys::landlock_add_rule_net(
-                &ruleset, port, sys::LL_NET_BIND_TCP & net_mask,
-            ) {
+            if let Err(e) =
+                sys::landlock_add_rule_net(&ruleset, port, sys::LL_NET_BIND_TCP & net_mask)
+            {
                 eprintln!("arkhd: sandbox: landlock bind rule for port {port}: {e}");
             }
         }
 
         // Network: connect ports
         for &port in &config.connect_ports {
-            if let Err(e) = sys::landlock_add_rule_net(
-                &ruleset, port, sys::LL_NET_CONNECT_TCP & net_mask,
-            ) {
+            if let Err(e) =
+                sys::landlock_add_rule_net(&ruleset, port, sys::LL_NET_CONNECT_TCP & net_mask)
+            {
                 eprintln!("arkhd: sandbox: landlock connect rule for port {port}: {e}");
             }
         }
