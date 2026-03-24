@@ -62,3 +62,5 @@ jobs:
 
       - name: Check aarch64 build
         run: cargo check --workspace --target aarch64-unknown-linux-musl
+        env:
+          RUSTFLAGS: ""
