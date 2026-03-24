@@ -1,0 +1,15 @@
+[package]
+name = "ark"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "CLI for the arkhe init system"
+license = "Apache-2.0"
+
+[[bin]]
+name = "ark"
+path = "src/main.rs"
+
+[dependencies]
+# Intentionally minimal. CLI reads plain text files.
+# No serde, no clap, no frameworks.

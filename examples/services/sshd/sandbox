@@ -1,0 +1,8 @@
+read = /usr, /lib, /lib64, /etc/ssh, /etc/passwd, /etc/shadow, /etc/group, /etc/nsswitch.conf, /etc/ld.so.cache
+write = /var/run/sshd, /var/log, /tmp, /run
+exec = /usr/sbin/sshd, /usr/bin, /bin, /usr/lib
+bind = 22
+connect = none
+network-namespace = host
+caps = net_bind_service, setuid, setgid, chown, dac_override, sys_chroot
+seccomp = disabled

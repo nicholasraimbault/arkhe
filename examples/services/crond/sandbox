@@ -1,0 +1,4 @@
+read = /usr, /lib, /lib64, /etc, /var/spool/cron
+write = /var/spool/cron, /var/log, /tmp
+exec = /usr/sbin/cron, /usr/bin, /bin, /usr/sbin
+caps = setuid, setgid

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Wait for a default route, then signal readiness
+while ! ip route show default >/dev/null 2>&1; do
+    sleep 1
+done
+touch /run/ready/network-online
+exec sleep infinity

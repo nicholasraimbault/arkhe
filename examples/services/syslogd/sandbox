@@ -1,0 +1,5 @@
+read = /usr, /lib, /lib64, /etc
+write = /var/log
+exec = /usr/bin/logger, /usr/bin, /bin
+bind = none
+connect = none

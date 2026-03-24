@@ -1,0 +1,30 @@
+[package]
+name = "arkhe"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "A pronoic init system — structurally secure by default"
+license = "Apache-2.0"
+repository = "https://github.com/nickraimbault/arkhe"
+
+[workspace]
+members = [".", "ark"]
+
+[[bin]]
+name = "arkhd"
+path = "src/main.rs"
+
+[dependencies]
+rustix = { version = "1", features = ["process", "event", "fs", "mount", "net", "pipe", "thread"] }
+io-uring = "0.7"
+libc = "0.2"
+
+[profile.release]
+opt-level = 2
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = false
+
+[profile.dev]
+panic = "abort"

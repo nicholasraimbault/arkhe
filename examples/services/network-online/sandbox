@@ -1,0 +1,2 @@
+# Network readiness check needs broad access
+sandbox = permissive

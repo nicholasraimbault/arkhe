@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /sbin/agetty tty1 linux
